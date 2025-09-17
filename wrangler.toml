@@ -1,5 +1,5 @@
 name = "frithhilton-ssr-worker"  # Unique name for your Worker
-main = "index.js"  # Entry point file
+main = "worker.js"  # Entry point file
 compatibility_date = "2025-09-17"  # Use current date
 usage_model = "bundled"  # Or "standard" for larger Workers
 
