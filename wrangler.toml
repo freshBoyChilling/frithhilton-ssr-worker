@@ -1,0 +1,12 @@
+name = "frithhilton-ssr-worker"  # Unique name for your Worker
+main = "index.js"  # Entry point file
+compatibility_date = "2025-09-17"  # Use current date
+usage_model = "bundled"  # Or "standard" for larger Workers
+
+[site]
+bucket = ""  # If using static assets, point to a folder; otherwise empty
+
+# Routes (bind to your domain)
+[[routes]]
+pattern = "www.frithhilton.com.ng/pages/freshPlayer.html*"
+zone_name = "frithhilton.com.ng"
