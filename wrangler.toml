@@ -1,7 +1,10 @@
-name = "frithhilton-ssr-worker"  # Unique name for your Worker
-main = "worker.js"  # Matches your Worker script file
-compatibility_date = "2025-09-18"  # Current date
+name = "frithhilton-ssr-worker"
+main = "worker.js"
+compatibility_date = "2025-09-18"
 
-[[routes]]
-pattern = "www.frithhilton.com.ng/pages/freshPlayer.html*"
-zone_name = "frithhilton.com.ng"
+[env.production]
+name = "frithhilton-ssr-worker-production"
+
+  [[env.production.routes]]
+  pattern = "www.frithhilton.com.ng/pages/freshPlayer.html*"
+  zone_name = "frithhilton.com.ng"
