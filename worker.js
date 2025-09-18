@@ -1,88 +1,88 @@
 addEventListener("fetch", (event) => {
-    event.respondWith(handleRequest(event.request));
+  event.respondWith(handleRequest(event.request));
 });
 
 async function handleRequest(request) {
-    // Parse track ID from query string
-    const url = new URL(request.url);
-    const trackId = parseInt(url.searchParams.get("track"));
-    if (isNaN(trackId) || trackId < 1 || trackId > 452) {
-        return new Response("Invalid track ID", { status: 400 });
+  // Parse track ID from query string
+  const url = new URL(request.url);
+  const trackId = parseInt(url.searchParams.get("track"));
+  if (isNaN(trackId) || trackId < 1 || trackId > 452) {
+    return new Response("Invalid track ID", { status: 400 });
+  }
+  
+  // Fetch albums.json
+  const albumsUrl = "https://raw.githubusercontent.com/freshBoyChilling/discography/main/data/albums.json";
+  let albums;
+  try {
+    const res = await fetch(albumsUrl);
+    if (!res.ok) throw new Error("Failed to fetch albums.json");
+    albums = await res.json();
+  } catch (e) {
+    return new Response("Error fetching albums data: " + e.message, { status: 500 });
+  }
+  
+  // Find album and song
+  let song, album;
+  for (const alb of albums) {
+    const foundSong = alb.songs.find((s) => s.id === trackId);
+    if (foundSong) {
+      song = foundSong;
+      album = alb;
+      break;
     }
-
-    // Fetch albums.json
-    const albumsUrl = "https://raw.githubusercontent.com/freshBoyChilling/discography/main/data/albums.json";
-    let albums;
-    try {
-        const res = await fetch(albumsUrl);
-        if (!res.ok) throw new Error("Failed to fetch albums.json");
-        albums = await res.json();
-    } catch (e) {
-        return new Response("Error fetching albums data: " + e.message, { status: 500 });
-    }
-
-    // Find album and song
-    let song, album;
-    for (const alb of albums) {
-        const foundSong = alb.songs.find((s) => s.id === trackId);
-        if (foundSong) {
-            song = foundSong;
-            album = alb;
-            break;
-        }
-    }
-    if (!song || !album) {
-        return new Response("Track not found", { status: 404 });
-    }
-
-    // Fetch track-specific JSON for lyrics and duration
-    const baseUrl = "https://raw.githubusercontent.com/DbRDYZmMRu/freshPlayerBucket/main";
-    const jsonUrl = `${baseUrl}/json/${album.id}/${trackId}.json`;
-    let trackData;
-    try {
-        const res = await fetch(jsonUrl);
-        if (!res.ok) throw new Error("Failed to fetch track JSON");
-        trackData = await res.json();
-    } catch (e) {
-        return new Response("Error fetching track data: " + e.message, { status: 500 });
-    }
-
-    // Generate track list for schema
-    const trackList = album.songs.map((s) => ({
-        "@type": "MusicRecording",
-        position: s.track,
-        name: s.title,
-        url: `https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${s.id}`,
-        ...(s.about && s.about !== "Song information will be displayed here when available." && { description: s.about }),
-        additionalProperty: { "@type": "PropertyValue", name: "muse", value: s.muse },
-    }));
-
-    // Build lyrics HTML
-    const lyricsHtml = `<pre>${trackData.lyrics.map((l) => (l.line ? `${l.timestamp ? `[${l.timestamp}] ` : ""}${l.line}` : "")).join("\n")}</pre>`;
-
-    // Calculate prev/next track
-    const songIndex = album.songs.findIndex((s) => s.id === trackId);
-    const prevId = songIndex > 0 ? album.songs[songIndex - 1].id : null;
-    const nextId = songIndex < album.songs.length - 1 ? album.songs[songIndex + 1].id : null;
-
-    // Generate HTML
-    const html = `
+  }
+  if (!song || !album) {
+    return new Response("Track not found", { status: 404 });
+  }
+  
+  // Fetch track-specific JSON for lyrics and duration
+  const baseUrl = "https://raw.githubusercontent.com/DbRDYZmMRu/freshPlayerBucket/main";
+  const jsonUrl = `${baseUrl}/json/${album.id}/${trackId}.json`;
+  let trackData;
+  try {
+    const res = await fetch(jsonUrl);
+    if (!res.ok) throw new Error("Failed to fetch track JSON");
+    trackData = await res.json();
+  } catch (e) {
+    return new Response("Error fetching track data: " + e.message, { status: 500 });
+  }
+  
+  // Generate track list for schema
+  const trackList = album.songs.map((s) => ({
+    "@type": "MusicRecording",
+    position: s.track,
+    name: s.title,
+    url: `https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${s.id}`,
+    ...(s.about && s.about !== "Song information will be displayed here when available." && { description: s.about }),
+    additionalProperty: { "@type": "PropertyValue", name: "muse", value: s.muse },
+  }));
+  
+  // Build lyrics HTML
+  const lyricsHtml = `<pre>${trackData.lyrics.map((l) => l.line ? l.line : "").join("\n")}</pre>`;
+  
+  // Calculate prev/next track
+  const songIndex = album.songs.findIndex((s) => s.id === trackId);
+  const prevId = songIndex > 0 ? album.songs[songIndex - 1].id : null;
+  const nextId = songIndex < album.songs.length - 1 ? album.songs[songIndex + 1].id : null;
+  
+  // Generate HTML
+  const html = `
     <!DOCTYPE html>
     <html lang="en">
       <head>
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="author" content="Frith Hilton">
-        <meta name="description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${song.releaseDate}. Full song, cover art, and streaming.">
+        <meta name="description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${trackData.release_date}. Full song, cover art, and streaming.">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta property="og:url" content="${request.url}">
         <meta property="og:type" content="music.song">
         <meta property="og:title" content="${song.title} by Frith Hilton - ${album.title} album">
-        <meta property="og:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${song.releaseDate}. Full song, cover art, and streaming.">
+        <meta property="og:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${trackData.release_date}. Full song, cover art, and streaming.">
         <meta property="og:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="${song.title} by Frith Hilton - ${album.title} album">
-        <meta name="twitter:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${song.releaseDate}. Full song, cover art, and streaming.">
+        <meta name="twitter:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${trackData.release_date}. Full song, cover art, and streaming.">
         <meta name="twitter:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
         <link rel="canonical" href="${request.url}">
         <meta name="robots" content="index,follow">
@@ -229,7 +229,7 @@ async function handleRequest(request) {
               "name": "${song.title}",
               "url": "${request.url}",
               "duration": "PT${Math.floor(trackData.duration / 60)}M${trackData.duration % 60}S",
-              "datePublished": "${song.releaseDate}",
+              "datePublished": "${trackData.release_date}",
               "image": "${baseUrl}/cover/${album.id}/${trackId}.jpg",
               "audio": "${baseUrl}/audio/${album.id}/${trackId}.mp3",
               ${song.about && song.about !== "Song information will be displayed here when available." ? `"description": "${song.about.replace(/"/g, '\\"')}",` : ""}
@@ -269,24 +269,24 @@ async function handleRequest(request) {
             </ol>
           </nav>
           <h1>${song.title} Lyrics by Frith Hilton - Official Audio</h1>
-          <p>From album: ${album.title} (${album.releaseDate}) | Released: ${song.releaseDate} | Duration: ${trackData.duration} seconds</p>
+          <p>From album: ${album.title} (${album.releaseDate}) | Released: ${trackData.release_date} | Duration: ${trackData.duration} seconds</p>
           ${song.about && song.about !== "Song information will be displayed here when available." ? `<p>${song.about}</p>` : ""}
           <img src="${baseUrl}/cover/${album.id}/${trackId}.jpg" alt="${song.title} cover art by Frith Hilton - Official music record artwork" width="300">
           <h2>Full Lyrics for ${song.title}</h2>
           ${lyricsHtml}
           <audio controls><source src="${baseUrl}/audio/${album.id}/${trackId}.mp3" type="audio/mpeg"></audio>
           <nav aria-label="Track Navigation">
-            ${prevId ? `<a href="?track=${prevId}">Previous Track</a>` : ""}
+            ${prevId ? `<a href="https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${prevId}">Previous Track</a>` : ""}
             <a href="${album.paymentLink || `/albums/${album.id}`}">${album.title} Album</a>
-            ${nextId ? `<a href="?track=${nextId}">Next Track</a>` : ""}
+            ${nextId ? `<a href="https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${nextId}">Next Track</a>` : ""}
           </nav>
         </div>
         <div id="player">Loading music player...</div>
       </body>
     </html>
   `;
-
-    return new Response(html, {
-        headers: { "Content-Type": "text/html; charset=utf-8" },
-    });
+  
+  return new Response(html, {
+    headers: { "Content-Type": "text/html; charset=utf-8" },
+  });
 }
