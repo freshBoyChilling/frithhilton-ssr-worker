@@ -1,150 +1,118 @@
-// Album ranges from API Worker (capped at 452)
-const albumRanges = {
-  1: { start: 1, end: 13, count: 13 },
-  2: { start: 14, end: 43, count: 30 },
-  3: { start: 44, end: 68, count: 25 },
-  4: { start: 69, end: 91, count: 23 },
-  5: { start: 92, end: 125, count: 34 },
-  6: { start: 126, end: 147, count: 22 },
-  7: { start: 148, end: 183, count: 36 },
-  8: { start: 184, end: 206, count: 23 },
-  9: { start: 207, end: 215, count: 9 },
-  10: { start: 216, end: 238, count: 23 },
-  11: { start: 239, end: 261, count: 23 },
-  12: { start: 262, end: 283, count: 22 },
-  13: { start: 284, end: 297, count: 14 },
-  14: { start: 298, end: 330, count: 33 },
-  15: { start: 331, end: 351, count: 21 },
-  16: { start: 352, end: 370, count: 19 },
-  17: { start: 371, end: 452, count: 82 }
-};
-
-const baseUrl = 'https://raw.githubusercontent.com/DbRDYZmMRu/freshPlayerBucket/main';
-
-function getAlbumForId(id) {
-  for (const [album, range] of Object.entries(albumRanges)) {
-    if (id >= range.start && id <= range.end) {
-      return album;
-    }
-  }
-  return null;
-}
-
-addEventListener('fetch', event => {
-  event.respondWith(handleRequest(event.request));
+addEventListener("fetch", (event) => {
+    event.respondWith(handleRequest(event.request));
 });
 
 async function handleRequest(request) {
-  const userAgent = request.headers.get('user-agent') || '';
-  const isBot = /Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|Pinterestbot|Applebot|SemrushBot|AhrefsBot/.test(userAgent);
-  console.log('User-Agent:', userAgent, 'IsBot:', isBot);
-  const url = new URL(request.url);
-  const path = url.pathname;
+    // Parse track ID from query string
+    const url = new URL(request.url);
+    const trackId = parseInt(url.searchParams.get("track"));
+    if (isNaN(trackId) || trackId < 1 || trackId > 452) {
+        return new Response("Invalid track ID", { status: 400 });
+    }
 
-  if (path === '/pages/freshPlayer.html') {
-    const trackId = url.searchParams.get('track');
-    if (trackId && isBot) {
-      const id = parseInt(trackId);
-      console.log('Handling bot request for track ID:', id);
+    // Fetch albums.json
+    const albumsUrl = "https://raw.githubusercontent.com/freshBoyChilling/discography/main/data/albums.json";
+    let albums;
+    try {
+        const res = await fetch(albumsUrl);
+        if (!res.ok) throw new Error("Failed to fetch albums.json");
+        albums = await res.json();
+    } catch (e) {
+        return new Response("Error fetching albums data: " + e.message, { status: 500 });
+    }
 
-      // Validate ID
-      if (isNaN(id) || id < 1 || id > 452) {
-        return new Response(JSON.stringify({ error: 'Invalid track ID', id }), {
-          status: 400,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Get album
-      const album = getAlbumForId(id);
-      if (!album) {
-        return new Response(JSON.stringify({ error: 'Track ID not found in any album', id }), {
-          status: 404,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-
-      // Construct resource URLs
-      const jsonUrl = `${baseUrl}/json/${album}/${id}.json`;
-      const audioUrl = `${baseUrl}/audio/${album}/${id}.mp3`;
-      const coverUrl = `${baseUrl}/cover/${album}/${id}.jpg`;
-
-      try {
-        // Fetch JSON
-        console.log('Fetching JSON from:', jsonUrl);
-        const response = await fetch(jsonUrl);
-        console.log('JSON response status:', response.status);
-        if (!response.ok) {
-          return new Response(JSON.stringify({ error: 'JSON file not found', url: jsonUrl, status: response.status, details: await response.text() }), {
-            status: 404,
-            headers: { 'Content-Type': 'application/json' }
-          });
+    // Find album and song
+    let song, album;
+    for (const alb of albums) {
+        const foundSong = alb.songs.find((s) => s.id === trackId);
+        if (foundSong) {
+            song = foundSong;
+            album = alb;
+            break;
         }
-        const song = await response.json();
+    }
+    if (!song || !album) {
+        return new Response("Track not found", { status: 404 });
+    }
 
-        // Album metadata
-        const albums = {
-          "1": { name: "H.I.V", date: "September 13, 2019" },
-          "2": { name: "Colourful Light", date: "January 18, 2023" },
-          "3": { name: "December 13", date: "January 30, 2022" },
-          "4": { name: "Frith", date: "June 19, 2022" },
-          "5": { name: "screen time", date: "September 19, 2022" },
-          "6": { name: "Jacaranda", date: "November 30, 2022" },
-          "7": { name: "Hilton", date: "February 15, 2022" },
-          "8": { name: "lantern", date: "June 4, 2023" },
-          "9": { name: "the Lover tap3", date: "July 16, 2023" },
-          "10": { name: "Nightswan", date: "January 15, 2024" },
-          "11": { name: "Troubadour", date: "March 7, 2024" },
-          "12": { name: "it's pop", date: "May 28, 2024" },
-          "13": { name: "the Sessions", date: "July 26, 2024" },
-          "14": { name: "Farther Memes", date: "December 12, 2024" },
-          "15": { name: "Valence Eve", date: "March 13, 2025" },
-          "16": { name: "whereIsTheMoodRobot", date: "August 27, 2025" },
-          "17": { name: "sev.en.ton (In Session)", date: "September 17, 2025" }
-        };
-        const albumData = albums[album] || { name: "Unknown Album", date: "" };
+    // Fetch track-specific JSON for lyrics and duration
+    const baseUrl = "https://raw.githubusercontent.com/DbRDYZmMRu/freshPlayerBucket/main";
+    const jsonUrl = `${baseUrl}/json/${album.id}/${trackId}.json`;
+    let trackData;
+    try {
+        const res = await fetch(jsonUrl);
+        if (!res.ok) throw new Error("Failed to fetch track JSON");
+        trackData = await res.json();
+    } catch (e) {
+        return new Response("Error fetching track data: " + e.message, { status: 500 });
+    }
 
-        // Format lyrics
-        let lyricsHtml = '<pre>';
-        song.lyrics.forEach(lineObj => {
-          if (lineObj.line) {
-            lyricsHtml += `${lineObj.timestamp ? `[${lineObj.timestamp}] ` : ''}${lineObj.line}\n`;
-            if (Object.keys(lineObj.annotations).length > 0) {
-              lyricsHtml += 'Annotations: ' + JSON.stringify(lineObj.annotations) + '\n';
-            }
-          }
-        });
-        lyricsHtml += '</pre>';
+    // Generate track list for schema
+    const trackList = album.songs.map((s) => ({
+        "@type": "MusicRecording",
+        position: s.track,
+        name: s.title,
+        url: `https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${s.id}`,
+        ...(s.about && s.about !== "Song information will be displayed here when available." && { description: s.about }),
+        additionalProperty: { "@type": "PropertyValue", name: "muse", value: s.muse },
+    }));
 
-        // Generate HTML
-        const html = `
-          <!DOCTYPE html>
-          <html lang="en">
-            <head>
-              <title>${song.song_title} by Frith Hilton</title>
-              <meta name="description" content="Lyrics and cover for ${song.song_title} by Frith Hilton from ${albumData.name}. Released ${song.release_date}.">
-              <meta name="robots" content="index,follow">
-              <script type="application/ld+json">
-                {
-                  "@context": "https://schema.org",
-                  "@type": "MusicRecording",
-                  "name": "${song.song_title}",
-                  "duration": "PT${Math.floor(song.duration / 60)}M${song.duration % 60}S",
-                  "datePublished": "${song.release_date}",
-                  "image": "${coverUrl}",
-                  "url": "${request.url}",
-                  "inAlbum": {
-                    "@type": "MusicAlbum",
-                    "name": "${albumData.name}",
-                    "datePublished": "${albumData.date}"
-                  },
-                  "byArtist": {
-                    "@type": "Person",
-                    "name": "Frith Hilton",
-                    "alternateName": "Howard Frith Hilton",
-                    "birthPlace": "Ogun State, Nigeria",
-                    "url": "https://www.frithhilton.com.ng/pages/bio.html",
-                    "description": "Frith Hilton is a Nigerian author, poet, songwriter, and musician with over 330 songs and 1,000 poems across 25 books. Discover his work at frithhilton.com.ng.",
+    // Build lyrics HTML
+    const lyricsHtml = `<pre>${trackData.lyrics.map((l) => (l.line ? `${l.timestamp ? `[${l.timestamp}] ` : ""}${l.line}` : "")).join("\n")}</pre>`;
+
+    // Calculate prev/next track
+    const songIndex = album.songs.findIndex((s) => s.id === trackId);
+    const prevId = songIndex > 0 ? album.songs[songIndex - 1].id : null;
+    const nextId = songIndex < album.songs.length - 1 ? album.songs[songIndex + 1].id : null;
+
+    // Generate HTML
+    const html = `
+    <!DOCTYPE html>
+    <html lang="en">
+      <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="author" content="Frith Hilton">
+        <meta name="description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${song.releaseDate}. Full song, cover art, and streaming.">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta property="og:url" content="${request.url}">
+        <meta property="og:type" content="music.song">
+        <meta property="og:title" content="${song.title} by Frith Hilton - ${album.title} album">
+        <meta property="og:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${song.releaseDate}. Full song, cover art, and streaming.">
+        <meta property="og:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="${song.title} by Frith Hilton - ${album.title} album">
+        <meta name="twitter:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${song.releaseDate}. Full song, cover art, and streaming.">
+        <meta name="twitter:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
+        <link rel="canonical" href="${request.url}">
+        <meta name="robots" content="index,follow">
+        <title>${song.title} by Frith Hilton - ${album.title} album</title>
+        <style>#seo-content { display: none; }</style>
+        <script type="application/ld+json">
+          {
+            "@context": "https://schema.org",
+            "@type": "MusicAlbum",
+            "id": "${album.id}",
+            "name": "${album.title}",
+            "image": "${album.cover}",
+            "datePublished": "${album.releaseDate}",
+            ${album.paymentLink ? `"url": "${album.paymentLink}",` : ""}
+            "numTracks": ${album.songs.length},
+            "track": ${JSON.stringify(trackList, null, 2)},
+            "byArtist": {
+              "@type": "Person",
+              "name": "Frith Hilton",
+              "alternateName": "Howard Frith Hilton",
+              "birthPlace": "Ogun State, Nigeria",
+              "url": "https://www.frithhilton.com.ng/pages/bio.html",
+              "description": "Frith Hilton is a Nigerian author, poet, songwriter, and musician with over 370 songs and almost 1,000 poems across over 35 books. Discover his work at www.frithhilton.com.ng.",
+              "sameAs": [
+                "https://x.com/frithhilton17",
+                "https://www.youtube.com/@frithhilton17",
+                "https://soundcloud.com/frithhilton17",
+                "https://genius.com/artists/Frith-hilton",
+                "https://instagram.com/frithhilton17"
+              ],
                     "image": [
                       {
                         "@type": "ImageObject",
@@ -251,46 +219,74 @@ async function handleRequest(request) {
                         "acquireLicensePage": "https://creativecommons.org/licenses/by/4.0/"
                       }
                     ],
-                    "jobTitle": "Poet, Musical artist",
-                    "nationality": {"@type": "Country", "name": "Nigeria"},
-                    "sameAs": [
-                      "https://x.com/frithhilton17",
-                      "https://www.youtube.com/@frithhilton17",
-                      "https://soundcloud.com/frithhilton17",
-                      "https://genius.com/artists/Frith-hilton",
-                      "https://instagram.com/frithhilton17"
-                    ],
-                    "contactPoint": {"@type": "ContactPoint", "email": "hello@frithhilton.com.ng", "contactType": "Professional Contact"},
-                    "worksFor": {"@type": "Organization", "name": "Frith Nightswan Enterprises", "url": "https://www.frithnightswanenterprises.com.ng"}
-                  },
-                  "recordingOf": {
-                    "@type": "MusicComposition",
-                    "lyrics": {"@type": "CreativeWork", "text": "${song.lyrics.map(l => l.line).join('\\n').replace(/"/g, '\\"')}"},
-                    "lyricist": {"@type": "Person", "name": "${song.writer}"}
-                  }
-                }
-              </script>
-            </head>
-            <body>
-              <h1>${song.song_title} by Frith Hilton</h1>
-              <p>From album: ${albumData.name} (${albumData.date}) | Released: ${song.release_date} | Duration: ${song.duration} seconds</p>
-              <img src="${coverUrl}" alt="Cover for ${song.song_title} by Frith Hilton" width="300">
-              <h2>Lyrics</h2>
-              ${lyricsHtml}
-              <audio controls><source src="${audioUrl}" type="audio/mpeg"></audio>
-            </body>
-          </html>
-        `;
-        return new Response(html, { headers: { 'Content-Type': 'text/html' } });
-      } catch (error) {
-        console.log('Fetch error:', error.message, 'URL:', jsonUrl);
-        return new Response(JSON.stringify({ error: 'Fetch failed', details: error.message, url: jsonUrl }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
-      }
-    }
-  }
+              "jobTitle": "Poet, Musical artist",
+              "nationality": {"@type": "Country", "name": "Nigeria"},
+              "contactPoint": {"@type": "ContactPoint", "email": "hello@frithhilton.com.ng", "contactType": "Professional Contact"},
+              "worksFor": {"@type": "Organization", "name": "Frith Nightswan Enterprises", "url": "https://www.frithnightswanenterprises.com.ng"}
+            },
+            "contains": {
+              "@type": "MusicRecording",
+              "name": "${song.title}",
+              "url": "${request.url}",
+              "duration": "PT${Math.floor(trackData.duration / 60)}M${trackData.duration % 60}S",
+              "datePublished": "${song.releaseDate}",
+              "image": "${baseUrl}/cover/${album.id}/${trackId}.jpg",
+              "audio": "${baseUrl}/audio/${album.id}/${trackId}.mp3",
+              ${song.about && song.about !== "Song information will be displayed here when available." ? `"description": "${song.about.replace(/"/g, '\\"')}",` : ""}
+              "additionalProperty": {"@type": "PropertyValue", "name": "muse", "value": "${song.muse}"},
+              "recordingOf": {
+                "@type": "MusicComposition",
+                "lyrics": {"@type": "CreativeWork", "text": "${trackData.lyrics
+                    .map((l) => l.line)
+                    .join("\\n")
+                    .replace(/"/g, '\\"')}"},
+                "lyricist": {"@type": "Person", "name": "${trackData.writer}"}
+              },
+              "interactionStatistic": {
+                "@type": "InteractionCounter",
+                "interactionType": "https://schema.org/ListenAction",
+                "userInteractionCount": "14300" // Replace with actual data if available
+              }
+            },
+            "breadcrumb": {
+              "@type": "BreadcrumbList",
+              "itemListElement": [
+                {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.frithhilton.com.ng/"},
+                {"@type": "ListItem", "position": 2, "name": "Albums", "item": "https://www.frithhilton.com.ng/pages/freshPlayer.html"},
+                {"@type": "ListItem", "position": 3, "name": "${song.title}", "item": "${request.url}"}
+              ]
+            }
+          }
+        </script>
+      </head>
+      <body>
+        <div id="seo-content">
+          <nav aria-label="Breadcrumb">
+            <ol>
+              <li><a href="/">Home</a></li>
+              <li><a href="/albums">Albums</a></li>
+              <li aria-current="page">${song.title}</li>
+            </ol>
+          </nav>
+          <h1>${song.title} Lyrics by Frith Hilton - Official Audio</h1>
+          <p>From album: ${album.title} (${album.releaseDate}) | Released: ${song.releaseDate} | Duration: ${trackData.duration} seconds</p>
+          ${song.about && song.about !== "Song information will be displayed here when available." ? `<p>${song.about}</p>` : ""}
+          <img src="${baseUrl}/cover/${album.id}/${trackId}.jpg" alt="${song.title} cover art by Frith Hilton - Official music record artwork" width="300">
+          <h2>Full Lyrics for ${song.title}</h2>
+          ${lyricsHtml}
+          <audio controls><source src="${baseUrl}/audio/${album.id}/${trackId}.mp3" type="audio/mpeg"></audio>
+          <nav aria-label="Track Navigation">
+            ${prevId ? `<a href="?track=${prevId}">Previous Track</a>` : ""}
+            <a href="${album.paymentLink || `/albums/${album.id}`}">${album.title} Album</a>
+            ${nextId ? `<a href="?track=${nextId}">Next Track</a>` : ""}
+          </nav>
+        </div>
+        <div id="player">Loading music player...</div>
+      </body>
+    </html>
+  `;
 
-  return fetch(request, { cf: { cacheTtl: 0 } });
+    return new Response(html, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+    });
 }
