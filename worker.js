@@ -7,7 +7,7 @@ async function handleRequest(request) {
   // Expanded regex to include Google-InspectionTool and other Google crawlers
   const isBot = /Googlebot|Google-InspectionTool|Googlebot-Image|Googlebot-Video|Mediapartners-Google|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|Pinterestbot|Applebot|SemrushBot|AhrefsBot/i.test(userAgent);
   console.log('User-Agent:', userAgent, 'IsBot:', isBot);
-
+  
   if (isBot) {
     // Parse track ID from query string
     const url = new URL(request.url);
@@ -15,7 +15,7 @@ async function handleRequest(request) {
     if (isNaN(trackId) || trackId < 1 || trackId > 452) {
       return new Response("Invalid track ID", { status: 400 });
     }
-
+    
     // Fetch albums.json
     const albumsUrl = "https://raw.githubusercontent.com/freshBoyChilling/discography/main/data/albums.json";
     let albums;
@@ -26,7 +26,7 @@ async function handleRequest(request) {
     } catch (e) {
       return new Response("Error fetching albums data: " + e.message, { status: 500 });
     }
-
+    
     // Find album and song
     let song, album;
     for (const alb of albums) {
@@ -40,7 +40,7 @@ async function handleRequest(request) {
     if (!song || !album) {
       return new Response("Track not found", { status: 404 });
     }
-
+    
     // Fetch track-specific JSON for lyrics and duration
     const baseUrl = "https://raw.githubusercontent.com/DbRDYZmMRu/freshPlayerBucket/main";
     const jsonUrl = `${baseUrl}/json/${album.id}/${trackId}.json`;
@@ -52,7 +52,7 @@ async function handleRequest(request) {
     } catch (e) {
       return new Response("Error fetching track data: " + e.message, { status: 500 });
     }
-
+    
     // Generate track list for schema
     const trackList = album.songs.map((s) => ({
       "@type": "MusicRecording",
@@ -62,15 +62,15 @@ async function handleRequest(request) {
       ...(s.about && s.about !== "Song information will be displayed here when available." && { description: s.about }),
       additionalProperty: { "@type": "PropertyValue", name: "muse", value: s.muse },
     }));
-
+    
     // Build lyrics HTML
     const lyricsHtml = `<pre>${trackData.lyrics.map((l) => l.line ? l.line : "").join("\n")}</pre>`;
-
+    
     // Calculate prev/next track
     const songIndex = album.songs.findIndex((s) => s.id === trackId);
     const prevId = songIndex > 0 ? album.songs[songIndex - 1].id : null;
     const nextId = songIndex < album.songs.length - 1 ? album.songs[songIndex + 1].id : null;
-
+    
     // Generate HTML for bots
     const html = `
       <!DOCTYPE html>
@@ -83,9 +83,12 @@ async function handleRequest(request) {
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <meta property="og:url" content="${request.url}">
           <meta property="og:type" content="music.song">
-          <meta property="og:title" content="${song.title} by Frith Hilton - ${album.title} album">
+          <meta property="og:title" content="${song.title}">
           <meta property="og:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
           <meta property="og:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
+          <meta property="music:duration" content="${trackData.duration}">
+          <meta property="music:album" content="${album.title}">
+          <meta property="music:artist" content="Frith Hilton">
           <meta name="twitter:card" content="summary_large_image">
           <meta name="twitter:title" content="${song.title} by Frith Hilton - ${album.title} album">
           <meta name="twitter:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
@@ -288,7 +291,6 @@ async function handleRequest(request) {
             </nav>
           </div>
           <div id="player">Loading music player...</div>
-          <script src="js/inject-for-bots.js" async></script>
         </body>
       </html>
     `;
