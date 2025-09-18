@@ -4,7 +4,8 @@ addEventListener('fetch', event => {
 
 async function handleRequest(request) {
   const userAgent = request.headers.get('user-agent') || '';
-  const isBot = /Googlebot|Bingbot|Slurp/.test(userAgent);
+  // Expanded bot detection
+  const isBot = /Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|Pinterestbot|Applebot|SemrushBot|AhrefsBot/.test(userAgent);
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -18,6 +19,7 @@ async function handleRequest(request) {
         const song = data.json;
         const albumId = data.album;
 
+        // Album mapping (from your provided list)
         const albums = {
           "1": { name: "H.I.V", date: "September 13, 2019" },
           "2": { name: "Colourful Light", date: "January 18, 2023" },
@@ -39,6 +41,7 @@ async function handleRequest(request) {
         };
         const album = albums[albumId] || { name: "Unknown Album", date: "" };
 
+        // Format lyrics
         let lyricsHtml = '<pre>';
         song.lyrics.forEach(lineObj => {
           if (lineObj.line) {
@@ -50,6 +53,7 @@ async function handleRequest(request) {
         });
         lyricsHtml += '</pre>';
 
+        // Generate HTML for bots
         const html = `
           <!DOCTYPE html>
           <html lang="en">
@@ -221,5 +225,6 @@ async function handleRequest(request) {
     }
   }
 
+  // Proxy to GitHub Pages for non-bots
   return fetch(request);
 }
