@@ -1,12 +1,10 @@
-name = "frithhilton-ssr-worker" # Unique name for your Worker
-main = "worker.js" # Entry point file
-compatibility_date = "2025-09-17" # Current date
-usage_model = "bundled" # Suitable for small Workers like this
+name = "frithhilton-ssr-worker"  # Unique name for your Worker
+main = "worker.js"  # Changed to match the file referenced in the error
+compatibility_date = "2025-09-18"  # Updated to current date
 
 [site]
-bucket = "" # Empty, as assets are served by GitHub Pages, not Worker
+bucket = ""  # Empty, as assets are served by GitHub Pages
 
-# Routes to intercept song pages
 [[routes]]
 pattern = "www.frithhilton.com.ng/pages/freshPlayer.html*"
 zone_name = "frithhilton.com.ng"
