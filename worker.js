@@ -5,7 +5,7 @@ addEventListener('fetch', event => {
 async function handleRequest(request) {
   const userAgent = request.headers.get('user-agent') || '';
   const isBot = /Googlebot|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|Pinterestbot|Applebot|SemrushBot|AhrefsBot/.test(userAgent);
-  console.log('User-Agent:', userAgent, 'IsBot:', isBot); // Debug log
+  console.log('User-Agent:', userAgent, 'IsBot:', isBot);
   const url = new URL(request.url);
   const path = url.pathname;
 
@@ -13,10 +13,10 @@ async function handleRequest(request) {
     const trackId = url.searchParams.get('track');
     if (trackId && isBot) {
       const resourceUrl = `https://www.frithhilton.com.ng/resource/${trackId}`;
-      console.log('Fetching resource:', resourceUrl); // Debug log
+      console.log('Fetching resource:', resourceUrl);
       try {
         const response = await fetch(resourceUrl);
-        console.log('Resource response status:', response.status); // Debug log
+        console.log('Resource response status:', response.status);
         if (response.ok) {
           const data = await response.json();
           const song = data.json;
@@ -226,7 +226,7 @@ async function handleRequest(request) {
           });
         }
       } catch (error) {
-        console.log('Fetch error:', error.message); // Debug log
+        console.log('Fetch error:', error.message);
         return new Response(JSON.stringify({ error: 'Fetch failed', details: error.message }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }
