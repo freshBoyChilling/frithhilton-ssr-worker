@@ -1,12 +1,12 @@
-name = "frithhilton-ssr-worker"  # Unique name for your Worker
-main = "worker.js"  # Entry point file
-compatibility_date = "2025-09-17"  # Use current date
-usage_model = "bundled"  # Or "standard" for larger Workers
+name = "frithhilton-ssr-worker" # Unique name for your Worker
+main = "worker.js" # Entry point file
+compatibility_date = "2025-09-17" # Current date
+usage_model = "bundled" # Suitable for small Workers like this
 
 [site]
-bucket = ""  # If using static assets, point to a folder; otherwise empty
+bucket = "" # Empty, as assets are served by GitHub Pages, not Worker
 
-# Routes (bind to your domain)
+# Routes to intercept song pages
 [[routes]]
 pattern = "www.frithhilton.com.ng/pages/freshPlayer.html*"
 zone_name = "frithhilton.com.ng"
