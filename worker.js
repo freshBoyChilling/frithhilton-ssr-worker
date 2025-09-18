@@ -73,16 +73,16 @@ async function handleRequest(request) {
         <meta charset="utf-8">
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="author" content="Frith Hilton">
-        <meta name="description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${trackData.release_date}. Full song, cover art, and streaming.">
+        <meta name="description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta property="og:url" content="${request.url}">
         <meta property="og:type" content="music.song">
         <meta property="og:title" content="${song.title} by Frith Hilton - ${album.title} album">
-        <meta property="og:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${trackData.release_date}. Full song, cover art, and streaming.">
+        <meta property="og:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
         <meta property="og:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="${song.title} by Frith Hilton - ${album.title} album">
-        <meta name="twitter:description" content="${song.title} lyrics by Frith Hilton | Official audio from ${album.title} album, released ${trackData.release_date}. Full song, cover art, and streaming.">
+        <meta name="twitter:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
         <meta name="twitter:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
         <link rel="canonical" href="${request.url}">
         <meta name="robots" content="index,follow">
