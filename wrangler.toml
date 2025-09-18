@@ -1,9 +1,6 @@
 name = "frithhilton-ssr-worker"  # Unique name for your Worker
-main = "worker.js"  # Changed to match the file referenced in the error
-compatibility_date = "2025-09-18"  # Updated to current date
-
-[site]
-bucket = ""  # Empty, as assets are served by GitHub Pages
+main = "worker.js"  # Matches your Worker script file
+compatibility_date = "2025-09-18"  # Current date
 
 [[routes]]
 pattern = "www.frithhilton.com.ng/pages/freshPlayer.html*"
