@@ -4,73 +4,86 @@ addEventListener("fetch", (event) => {
 
 async function handleRequest(request) {
   const userAgent = request.headers.get('user-agent') || '';
-  // Expanded regex to include Google-InspectionTool and other Google crawlers
   const isBot = /Googlebot|Google-InspectionTool|Googlebot-Image|Googlebot-Video|Mediapartners-Google|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|Pinterestbot|Applebot|SemrushBot|AhrefsBot/i.test(userAgent);
   console.log('User-Agent:', userAgent, 'IsBot:', isBot);
-  
+
+  // Parse track ID from query string or friendly URL
+  const url = new URL(request.url);
+  let trackId;
+  const pathMatch = url.pathname.match(/^\/albums\/([^\/]+)\/([^\/]+)/);
+  if (pathMatch) {
+    const [, albumName, songName] = pathMatch;
+    trackId = await getTrackIdFromFriendlyUrl(albumName, songName);
+  } else {
+    trackId = parseInt(url.searchParams.get("track"));
+  }
+  if (isNaN(trackId) || trackId < 1 || trackId > 452) {
+    return new Response("Invalid track ID", { status: 400 });
+  }
+
+  // Fetch albums.json
+  const albumsUrl = "https://raw.githubusercontent.com/freshBoyChilling/discography/main/data/albums.json";
+  let albums;
+  try {
+    const res = await fetch(albumsUrl);
+    if (!res.ok) throw new Error("Failed to fetch albums.json");
+    albums = await res.json();
+  } catch (e) {
+    return new Response("Error fetching albums data: " + e.message, { status: 500 });
+  }
+
+  // Find album and song
+  let song, album;
+  for (const alb of albums) {
+    const foundSong = alb.songs.find((s) => s.id === trackId);
+    if (foundSong) {
+      song = foundSong;
+      album = alb;
+      break;
+    }
+  }
+  if (!song || !album) {
+    return new Response("Track not found", { status: 404 });
+  }
+
+  // Fetch track-specific JSON for lyrics and duration
+  const baseUrl = "https://raw.githubusercontent.com/DbRDYZmMRu/freshPlayerBucket/main";
+  const jsonUrl = `${baseUrl}/json/${album.id}/${trackId}.json`;
+  let trackData;
+  try {
+    const res = await fetch(jsonUrl);
+    if (!res.ok) throw new Error("Failed to fetch track JSON");
+    trackData = await res.json();
+  } catch (e) {
+    return new Response("Error fetching track data: " + e.message, { status: 500 });
+  }
+
+  // Generate friendly canonical URL
+  const albumSlug = album.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const songSlug = song.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+  const canonicalUrl = `https://www.frithhilton.com.ng/albums/${albumSlug}/${songSlug}`;
+
+  // Generate track list for schema
+  const trackList = album.songs.map((s) => ({
+    "@type": "MusicRecording",
+    position: s.track,
+    name: s.title,
+    url: `https://www.frithhilton.com.ng/albums/${albumSlug}/${s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
+    ...(s.about && s.about !== "Song information will be displayed here when available." && { description: s.about }),
+    additionalProperty: { "@type": "PropertyValue", name: "muse", value: s.muse },
+  }));
+
+  // Build lyrics HTML
+  const lyricsHtml = `<pre>${trackData.lyrics.map((l) => l.line ? l.line : "").join("\n")}</pre>`;
+
+  // Calculate prev/next track
+  const songIndex = album.songs.findIndex((s) => s.id === trackId);
+  const prevId = songIndex > 0 ? album.songs[songIndex - 1].id : null;
+  const nextId = songIndex < album.songs.length - 1 ? album.songs[songIndex + 1].id : null;
+  const prevSlug = prevId ? album.songs[songIndex - 1].title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : null;
+  const nextSlug = nextId ? album.songs[songIndex + 1].title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : null;
+
   if (isBot) {
-    // Parse track ID from query string
-    const url = new URL(request.url);
-    const trackId = parseInt(url.searchParams.get("track"));
-    if (isNaN(trackId) || trackId < 1 || trackId > 452) {
-      return new Response("Invalid track ID", { status: 400 });
-    }
-    
-    // Fetch albums.json
-    const albumsUrl = "https://raw.githubusercontent.com/freshBoyChilling/discography/main/data/albums.json";
-    let albums;
-    try {
-      const res = await fetch(albumsUrl);
-      if (!res.ok) throw new Error("Failed to fetch albums.json");
-      albums = await res.json();
-    } catch (e) {
-      return new Response("Error fetching albums data: " + e.message, { status: 500 });
-    }
-    
-    // Find album and song
-    let song, album;
-    for (const alb of albums) {
-      const foundSong = alb.songs.find((s) => s.id === trackId);
-      if (foundSong) {
-        song = foundSong;
-        album = alb;
-        break;
-      }
-    }
-    if (!song || !album) {
-      return new Response("Track not found", { status: 404 });
-    }
-    
-    // Fetch track-specific JSON for lyrics and duration
-    const baseUrl = "https://raw.githubusercontent.com/DbRDYZmMRu/freshPlayerBucket/main";
-    const jsonUrl = `${baseUrl}/json/${album.id}/${trackId}.json`;
-    let trackData;
-    try {
-      const res = await fetch(jsonUrl);
-      if (!res.ok) throw new Error("Failed to fetch track JSON");
-      trackData = await res.json();
-    } catch (e) {
-      return new Response("Error fetching track data: " + e.message, { status: 500 });
-    }
-    
-    // Generate track list for schema
-    const trackList = album.songs.map((s) => ({
-      "@type": "MusicRecording",
-      position: s.track,
-      name: s.title,
-      url: `https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${s.id}`,
-      ...(s.about && s.about !== "Song information will be displayed here when available." && { description: s.about }),
-      additionalProperty: { "@type": "PropertyValue", name: "muse", value: s.muse },
-    }));
-    
-    // Build lyrics HTML
-    const lyricsHtml = `<pre>${trackData.lyrics.map((l) => l.line ? l.line : "").join("\n")}</pre>`;
-    
-    // Calculate prev/next track
-    const songIndex = album.songs.findIndex((s) => s.id === trackId);
-    const prevId = songIndex > 0 ? album.songs[songIndex - 1].id : null;
-    const nextId = songIndex < album.songs.length - 1 ? album.songs[songIndex + 1].id : null;
-    
     // Generate HTML for bots
     const html = `
       <!DOCTYPE html>
@@ -81,7 +94,7 @@ async function handleRequest(request) {
           <meta name="author" content="Frith Hilton">
           <meta name="description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <meta property="og:url" content="${request.url}">
+          <meta property="og:url" content="${canonicalUrl}">
           <meta property="og:type" content="music.song">
           <meta property="og:title" content="${song.title}">
           <meta property="og:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
@@ -93,7 +106,7 @@ async function handleRequest(request) {
           <meta name="twitter:title" content="${song.title} by Frith Hilton - ${album.title} album">
           <meta name="twitter:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
           <meta name="twitter:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
-          <link rel="canonical" href="${request.url}">
+          <link rel="canonical" href="${canonicalUrl}">
           <meta name="robots" content="index,follow">
           <title>${song.title} by Frith Hilton - ${album.title} album</title>
           <style>#seo-content { display: none; }</style>
@@ -236,7 +249,7 @@ async function handleRequest(request) {
               "contains": {
                 "@type": "MusicRecording",
                 "name": "${song.title}",
-                "url": "${request.url}",
+                "url": "${canonicalUrl}",
                 "duration": "PT${Math.floor(trackData.duration / 60)}M${trackData.duration % 60}S",
                 "datePublished": "${trackData.release_date}",
                 "image": "${baseUrl}/cover/${album.id}/${trackId}.jpg",
@@ -254,15 +267,16 @@ async function handleRequest(request) {
                 "interactionStatistic": {
                   "@type": "InteractionCounter",
                   "interactionType": "https://schema.org/ListenAction",
-                  "userInteractionCount": "14300" // Replace with actual data if available
+                  "userInteractionCount": "14300"
                 }
               },
               "breadcrumb": {
                 "@type": "BreadcrumbList",
                 "itemListElement": [
                   {"@type": "ListItem", "position": 1, "name": "Home", "item": "https://www.frithhilton.com.ng/"},
-                  {"@type": "ListItem", "position": 2, "name": "Albums", "item": "https://www.frithhilton.com.ng/pages/freshPlayer.html"},
-                  {"@type": "ListItem", "position": 3, "name": "${song.title}", "item": "${request.url}"}
+                  {"@type": "ListItem", "position": 2, "name": "Albums", "item": "https://www.frithhilton.com.ng/albums"},
+                  {"@type": "ListItem", "position": 3, "name": "${album.title}", "item": "${album.paymentLink || `https://www.frithhilton.com.ng/albums/${albumSlug}`}"},
+                  {"@type": "ListItem", "position": 4, "name": "${song.title}", "item": "${canonicalUrl}"}
                 ]
               }
             }
@@ -274,6 +288,7 @@ async function handleRequest(request) {
               <ol>
                 <li><a href="/">Home</a></li>
                 <li><a href="/albums">Albums</a></li>
+                <li><a href="${album.paymentLink || `/albums/${albumSlug}`}">${album.title}</a></li>
                 <li aria-current="page">${song.title}</li>
               </ol>
             </nav>
@@ -285,9 +300,9 @@ async function handleRequest(request) {
             ${lyricsHtml}
             <audio controls><source src="${baseUrl}/audio/${album.id}/${trackId}.mp3" type="audio/mpeg"></audio>
             <nav aria-label="Track Navigation">
-              ${prevId ? `<a href="https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${prevId}">Previous Track</a>` : ""}
-              <a href="${album.paymentLink || `/albums/${album.id}`}">${album.title} Album</a>
-              ${nextId ? `<a href="https://www.frithhilton.com.ng/pages/freshPlayer.html?track=${nextId}">Next Track</a>` : ""}
+              ${prevId ? `<a href="https://www.frithhilton.com.ng/albums/${albumSlug}/${prevSlug}">Previous Track</a>` : ""}
+              <a href="${album.paymentLink || `/albums/${albumSlug}`}">${album.title} Album</a>
+              ${nextId ? `<a href="https://www.frithhilton.com.ng/albums/${albumSlug}/${nextSlug}">Next Track</a>` : ""}
             </nav>
           </div>
           <div id="player">Loading music player...</div>
@@ -301,4 +316,22 @@ async function handleRequest(request) {
     // Proxy to GitHub Pages for non-bots
     return fetch(request, { cf: { cacheTtl: 0 } });
   }
+}
+
+async function getTrackIdFromFriendlyUrl(albumName, songName) {
+  const albumsUrl = 'https://raw.githubusercontent.com/freshBoyChilling/discography/main/data/albums.json';
+  try {
+    const res = await fetch(albumsUrl);
+    if (!res.ok) throw new Error('Failed to fetch albums.json');
+    const albums = await res.json();
+    for (const album of albums) {
+      if (album.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') === albumName.toLowerCase()) {
+        const song = album.songs.find(s => s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') === songName.toLowerCase());
+        if (song) return song.id;
+      }
+    }
+  } catch (e) {
+    console.log('Error fetching albums:', e.message);
+  }
+  return null;
 }
