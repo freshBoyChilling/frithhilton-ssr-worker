@@ -100,7 +100,7 @@ async function handleRequest(request) {
           <meta charset="utf-8">
           <meta http-equiv="X-UA-Compatible" content="IE=edge">
           <meta name="author" content="Frith Hilton">
-          <meta name="description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
+          <meta name="description" content="Stream "${song.title}" by Frith Hilton, written for camelCaseToSpaced(${song.muse}) from the ${album.title} album, released ${trackData.release_date}. Read Lyrics!">
           <meta name="viewport" content="width=device-width, initial-scale=1">
           <meta property="og:url" content="${canonicalUrl}">
           <meta property="og:type" content="music.song">
