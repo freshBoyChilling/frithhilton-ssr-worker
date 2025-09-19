@@ -105,14 +105,14 @@ async function handleRequest(request) {
           <meta property="og:url" content="${canonicalUrl}">
           <meta property="og:type" content="music.song">
           <meta property="og:title" content="${song.title}">
-          <meta property="og:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
+          <meta property="og:description" content="Stream '${song.title}' by Frith Hilton, written for '${camelCaseToSpaced(song.muse)}' from the ${album.title} album, released ${trackData.release_date}. Read Lyrics!">
           <meta property="og:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
           <meta property="music:duration" content="${trackData.duration}">
           <meta property="music:album" content="${album.title}">
           <meta property="music:artist" content="Frith Hilton">
           <meta name="twitter:card" content="summary_large_image">
           <meta name="twitter:title" content="${song.title} by Frith Hilton - ${album.title} album">
-          <meta name="twitter:description" content="Stream and read lyrics to ${song.title} by Frith Hilton from the ${album.title} album, released ${trackData.release_date}.">
+          <meta name="twitter:description" content="Stream '${song.title}' by Frith Hilton, written for '${camelCaseToSpaced(song.muse)}' from the ${album.title} album, released ${trackData.release_date}. Read Lyrics!">
           <meta name="twitter:image" content="${baseUrl}/cover/${album.id}/${trackId}.jpg">
           <link rel="canonical" href="${canonicalUrl}">
           <meta name="robots" content="index,follow">
@@ -263,7 +263,7 @@ async function handleRequest(request) {
                 "image": "${baseUrl}/cover/${album.id}/${trackId}.jpg",
                 "audio": "${baseUrl}/audio/${album.id}/${trackId}.mp3",
                 ${song.about && song.about !== "Song information will be displayed here when available." ? `"description": "${song.about.replace(/"/g, '\\"')}",` : ""}
-                "additionalProperty": {"@type": "PropertyValue", "name": "muse", "value": "camelCaseToSpaced(${song.muse})"},
+                "additionalProperty": {"@type": "PropertyValue", "name": "muse", "value": "${camelCaseToSpaced(song.muse)}"},
                 "recordingOf": {
                   "@type": "MusicComposition",
                   "lyrics": {"@type": "CreativeWork", "text": "${trackData.lyrics
@@ -301,7 +301,7 @@ async function handleRequest(request) {
               </ol>
             </nav>
             <h1>${song.title} Lyrics by Frith Hilton - Official Audio</h1>
-            <p>From album: ${album.title} (${album.releaseDate}) | Released: ${trackData.release_date} | Duration: ${trackData.duration} seconds</p>
+            <p>From album: ${album.title} (${album.releaseDate}) | Released: ${trackData.release_date} | Duration: ${trackData.duration} seconds | Muse: ${camelCaseToSpaced(song.muse)}</p>
             ${song.about && song.about !== "Song information will be displayed here when available." ? `<p>${song.about}</p>` : ""}
             <img src="${baseUrl}/cover/${album.id}/${trackId}.jpg" alt="${song.title} cover art by Frith Hilton - Official music record artwork" width="300">
             <h2>Full Lyrics for ${song.title}</h2>
