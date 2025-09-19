@@ -3,11 +3,14 @@ addEventListener("fetch", (event) => {
 });
 
 async function handleRequest(request) {
+  function camelCaseToSpaced(str) {
+    return str.replace(/([A-Z])/g, ' $1').replace(/^./, s => s.toUpperCase());
+  }
   const userAgent = request.headers.get('user-agent') || '';
   // Expanded regex to include Google-InspectionTool and other Google crawlers
   const isBot = /Googlebot|Google-InspectionTool|Googlebot-Image|Googlebot-Video|Mediapartners-Google|Bingbot|Slurp|DuckDuckBot|Baiduspider|YandexBot|facebookexternalhit|Twitterbot|LinkedInBot|Pinterestbot|Applebot|SemrushBot|AhrefsBot/i.test(userAgent);
   console.log('User-Agent:', userAgent, 'IsBot:', isBot);
-
+  
   // Parse track ID from query string or friendly URL
   const url = new URL(request.url);
   let trackId;
@@ -18,13 +21,13 @@ async function handleRequest(request) {
   } else {
     trackId = parseInt(url.searchParams.get("track"));
   }
-
+  
   // If no valid track ID, proxy to GitHub Pages for all users (bots and non-bots)
   if (isNaN(trackId) || trackId < 1 || trackId > 452) {
     console.log('No valid track ID, proxying to GitHub Pages');
     return fetch(request, { cf: { cacheTtl: 0 } });
   }
-
+  
   // If we have a valid track ID, proceed with SSR logic for bots only
   if (isBot) {
     // Fetch albums.json
@@ -68,7 +71,7 @@ async function handleRequest(request) {
     const albumSlug = album.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const songSlug = song.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     const canonicalUrl = `https://www.frithhilton.com.ng/albums/${albumSlug}/${songSlug}`;
-
+    
     // Generate track list for schema
     const trackList = album.songs.map((s) => ({
       "@type": "MusicRecording",
@@ -76,19 +79,19 @@ async function handleRequest(request) {
       name: s.title,
       url: `https://www.frithhilton.com.ng/albums/${albumSlug}/${s.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}`,
       ...(s.about && s.about !== "Song information will be displayed here when available." && { description: s.about }),
-      additionalProperty: { "@type": "PropertyValue", name: "muse", value: s.muse },
+      additionalProperty: { "@type": "PropertyValue", name: "muse", value: camelCaseToSpaced(s.muse) },
     }));
-
+    
     // Build lyrics HTML
     const lyricsHtml = `<pre>${trackData.lyrics.map((l) => l.line ? l.line : "").join("\n")}</pre>`;
-
+    
     // Calculate prev/next track
     const songIndex = album.songs.findIndex((s) => s.id === trackId);
     const prevId = songIndex > 0 ? album.songs[songIndex - 1].id : null;
     const nextId = songIndex < album.songs.length - 1 ? album.songs[songIndex + 1].id : null;
     const prevSlug = prevId ? album.songs[songIndex - 1].title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : null;
     const nextSlug = nextId ? album.songs[songIndex + 1].title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') : null;
-
+    
     // Generate HTML for bots
     const html = `
       <!DOCTYPE html>
@@ -260,7 +263,7 @@ async function handleRequest(request) {
                 "image": "${baseUrl}/cover/${album.id}/${trackId}.jpg",
                 "audio": "${baseUrl}/audio/${album.id}/${trackId}.mp3",
                 ${song.about && song.about !== "Song information will be displayed here when available." ? `"description": "${song.about.replace(/"/g, '\\"')}",` : ""}
-                "additionalProperty": {"@type": "PropertyValue", "name": "muse", "value": "${song.muse}"},
+                "additionalProperty": {"@type": "PropertyValue", "name": "muse", "value": "camelCaseToSpaced(${song.muse})"},
                 "recordingOf": {
                   "@type": "MusicComposition",
                   "lyrics": {"@type": "CreativeWork", "text": "${trackData.lyrics
